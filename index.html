@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="ru"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Рита — кликер для всего мира</title>
+<meta name="description" content="Кликай по крысе Рите вместе со всем миром. Дротики летят, счёт общий.">
+<meta property="og:title" content="Рита — кликер для всего мира">
+<meta property="og:description" content="Кликай по крысе Рите вместе со всем миром.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%90%80%3C/text%3E%3C/svg%3E">
+<style>
+:root{--bg:#f4f1ec;--fg:#1d1b18;--muted:#7a746b;--accent:#d2452f}
+@media (prefers-color-scheme:dark){:root{--bg:#1b1a18;--fg:#f3efe8;--muted:#a49d92;--accent:#ff6a4d}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:system-ui,sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center;overflow-x:hidden;-webkit-tap-highlight-color:transparent;user-select:none;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+header{text-align:center;padding:20px 16px 6px}
+.row{display:flex;align-items:baseline;justify-content:center;gap:14px;flex-wrap:wrap}
+.name{font-size:clamp(28px,7vw,44px);font-weight:800;color:var(--accent)}
+.count{font-size:clamp(44px,13vw,88px);font-weight:800;font-variant-numeric:tabular-nums;line-height:1}
+.sub{color:var(--muted);font-size:14px;margin-top:6px;min-height:18px}
+main{flex:1;display:flex;align-items:center;justify-content:center;width:100%;padding:10px}
+.stage{position:relative;width:min(92vw,560px)}
+#btn{display:block;width:100%;padding:0;border:0;background:none;outline:none;touch-action:manipulation}
+#btn img{display:block;width:100%;height:auto;border-radius:24px;pointer-events:none}
+#darts{position:absolute;inset:0;pointer-events:none}
+.dart{position:absolute;width:64px;height:16px;transform-origin:100% 50%}
+
+nav{width:100%;max-width:960px;display:flex;justify-content:space-between;align-items:center;padding:14px 18px;font-weight:700}
+nav a{color:var(--fg);text-decoration:none;margin-left:18px;font-weight:600;font-size:15px}
+nav a:hover{color:var(--accent)}
+section.info{width:100%;max-width:760px;padding:40px 20px}
+section.info h2{font-size:28px;margin:0 0 14px}
+section.info p,section.info li{line-height:1.6;color:var(--muted);font-size:17px}
+section.info ol{padding-left:22px}
+.dl{display:inline-block;background:var(--accent);color:#fff;text-decoration:none;font-weight:700;padding:14px 26px;border-radius:14px;font-size:18px;margin-top:8px}
+.faq b{color:var(--fg)}
+footer{width:100%;text-align:center;color:var(--muted);font-size:14px;padding:30px 16px 40px}
+html{scroll-behavior:smooth}
+</style></head><body>
+<nav><span>🐀 Рита</span><span><a href="#play">Играть</a><a href="#how">Как играть</a><a href="#app">Приложение</a></span></nav>
+<header id="play">
+  <div class="row"><span class="name">Рита</span><span class="count" id="count">0</span></div>
+  <div class="sub" id="sub">всего кликов в мире</div>
+</header>
+<main><div class="stage" id="stage">
+  <button id="btn" aria-label="Рита"><img id="rat" alt="Рита" src="rita.jpg"></button>
+  <div id="darts"></div>
+</div></main>
+<section class="info" id="how">
+  <h2>Как играть</h2>
+  <ol>
+    <li>Жми на Риту.</li>
+    <li>С каждым кликом в неё летит дротик и остаётся торчать на 30 секунд.</li>
+    <li>Цифра сверху — клики всех игроков в мире. Она обновляется каждые 5 секунд.</li>
+  </ol>
+</section>
+<section class="info" id="app">
+  <h2>Приложение для Android</h2>
+  <p>Та же игра на телефоне, с тем же общим счётом.</p>
+  <a class="dl" id="dl" href="#">Скачать APK</a>
+  <p class="faq"><b>Не устанавливается?</b> Разреши установку из этого источника в настройках телефона, когда он спросит.</p>
+</section>
+<section class="info faq">
+  <h2>Вопросы</h2>
+  <p><b>Почему счёт общий?</b> Все клики со всех устройств складываются в одну базу.</p>
+  <p><b>Кто такая Рита?</b> Крыса, которую мы так назвали.</p>
+</section>
+<footer>Рита · кликер</footer>
+<script src="config.js"></script>
+<script>
+// Общий счётчик: бесплатный сервис counterapi.dev. Хочешь свой счёт — поменяй NS.
+var NS='rita-clicker-ilya', KEY='clicks', API='https://api.counterapi.dev/v1/'+NS+'/'+KEY;
+var countEl=document.getElementById('count'),subEl=document.getElementById('sub');
+var stage=document.getElementById('stage'),dartsEl=document.getElementById('darts'),rat=document.getElementById('rat');
+var world=0,pending=0,online=false,shown=0,syncing=false;
+try{world=+localStorage.getItem('rita_world')||0}catch(e){}
+function fmt(n){try{return n.toLocaleString('ru-RU')}catch(e){return ''+n}}
+function render(){var v=world+pending;if(v>shown)shown=v;countEl.textContent=fmt(shown)}
+function setSub(){subEl.textContent=online?'всего кликов в мире · синхронизация каждые 5 сек':'нет связи ('+err+') — клики сохраню и отправлю позже'}
+function remember(){try{localStorage.setItem('rita_world',''+world)}catch(e){}}
+var DB=(window.RITA_DB||'').replace(/\/+$/,''),err='';
+async function get(url){var r=await fetch(url,{cache:'no-store'});var j=await r.json();return (j&&typeof j.count==='number')?j.count:null}
+async function add(k){
+  if(DB){var r=await fetch(DB+'/rita.json',{method:'PATCH',body:JSON.stringify({n:{'.sv':{increment:k}}})});if(!r.ok)throw new Error('запись '+r.status);return}
+  for(var i=0;i<k;i++){await get(API+'/up')}
+}
+async function total(){
+  if(DB){var r=await fetch(DB+'/rita/n.json',{cache:'no-store'});if(!r.ok)throw new Error('чтение '+r.status);var j=await r.json();return typeof j==='number'?j:0}
+  return await get(API)
+}
+// Каждые 5 секунд: отправляем накопленные клики и забираем общий счёт.
+async function sync(){
+  if(syncing)return;syncing=true;
+  try{
+    var n=pending;
+    if(n>0){await add(n);pending-=n;if(!DB)world+=0}
+    var t=await total();
+    if(t!==null){if(t>world)world=t;online=true;err=''}else{online=false;err='пустой ответ'}
+  }catch(e){online=false;err=(e&&e.message)||'ошибка сети'}
+  remember();setSub();render();syncing=false;
+}
+render();setSub();sync();setInterval(sync,5000);
+function throwDart(){
+  var w=stage.clientWidth,h=stage.clientHeight;
+  var tx=w*(0.22+Math.random()*0.5),ty=h*(0.2+Math.random()*0.55);
+  var from=Math.random()*Math.PI*2,dist=Math.max(w,h)*0.9+120;
+  var ang=Math.atan2(-Math.sin(from),-Math.cos(from));
+  var dx=Math.cos(from)*dist,dy=Math.sin(from)*dist;
+  var el=document.createElement('div');el.className='dart';
+  el.style.left=(tx-64)+'px';el.style.top=(ty-8)+'px';
+  el.innerHTML='<svg width="64" height="16" viewBox="0 0 64 16"><polygon points="0,1 14,8 0,15 5,8" fill="#e63946"/><rect x="12" y="6.5" width="30" height="3" rx="1.5" fill="#3a3a3a"/><polygon points="42,5 56,7 56,9 42,11" fill="#9aa0a6"/><polygon points="56,7.2 64,8 56,8.8" fill="#cfd4d8"/></svg>';
+  dartsEl.appendChild(el);
+  var rot='rotate('+ang+'rad)';
+  el.style.transform=rot;
+  el.animate([{transform:'translate('+dx+'px,'+dy+'px) '+rot,opacity:0},{transform:rot,opacity:1}],{duration:260,easing:'cubic-bezier(.2,.7,.4,1)'});
+  setTimeout(function(){var f=el.animate([{opacity:1},{opacity:0}],{duration:400,fill:'forwards'});f.onfinish=function(){el.remove()}},30000);
+}
+document.getElementById('btn').addEventListener('click',function(){
+  pending++;render();throwDart();
+  rat.animate([{transform:'scale(1)'},{transform:'scale(.97) rotate(-.6deg)'},{transform:'scale(1)'}],{duration:130});
+});
+
+(function(){
+  var a=document.getElementById('dl');
+  if(!a)return;
+  if(window.RITA_APK)a.href=window.RITA_APK;
+  else{a.style.display='none';var sec=document.getElementById('app');if(sec)sec.style.display='none';var l=document.querySelector('nav a[href="#app"]');if(l)l.style.display='none'}
+})();
+</script></body></html>
